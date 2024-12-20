@@ -1,57 +1,54 @@
-# Workmail resource does not exists on Terraform
+resource "null_resource" "create_workmail_organization" {
+  provisioner "local-exec" {
+    command = <<EOT
+      aws workmail create-organization \
+        --alias ${var.organization_alias} \
+        --region ${var.region} \
+        --query 'OrganizationId' --output text > organization_id.txt
+    EOT
+  }
+}
 
-# resource "aws_workmail_organization" "this" {
-#   alias                  = var.organization_alias
-#   kms_key_arn            = var.use_default_kms ? null : var.custom_kms_key_arn
-#   enable_interoperability = true
+resource "null_resource" "associate_domain" {
+  depends_on = [null_resource.create_workmail_organization]
 
-#   tags = var.tags
+  provisioner "local-exec" {
+    command = <<EOT
+      aws workmail register-to-workmail \
+        --organization-id $(cat organization_id.txt) \
+        --domain ${var.domain_name} \
+        --region ${var.region}
+    EOT
+  }
+}
 
-# }
+resource "null_resource" "create_workmail_users" {
+  count = length(var.users)
 
-# resource "aws_workmail_domain" "this" {
-#   count = var.domain_type == "route53" || var.domain_type == "external" ? 1 : 0
+  provisioner "local-exec" {
+    command = <<EOT
+      aws workmail create-user \
+        --organization-id $(cat organization_id.txt) \
+        --name "${element(var.users, count.index).name}" \
+        --display-name "${element(var.users, count.index).display_name}" \
+        --password "${element(var.users, count.index).password}" \
+        --region ${var.region}
+    EOT
+  }
+}
 
-#   organization_id = aws_workmail_organization.this.id
-#   domain          = var.domain_name
+resource "null_resource" "create_workmail_alias" {
+  count = length(var.users)
 
-#   tags = var.tags
+  provisioner "local-exec" {
+    command = <<EOT
+      aws workmail create-alias \
+        --organization-id $(cat organization_id.txt) \
+        --entity-id "$(aws workmail list-users --organization-id $(cat organization_id.txt) --query 'Users[?Name==`${element(var.users, count.index).name}`].Id' --output text)" \
+        --alias "${element(var.users, count.index).aliases[0]}" \
+        --region ${var.region}
+    EOT
+  }
+}
 
-# }
-
-# resource "aws_route53_record" "mx" {
-#   count = var.domain_type == "route53" ? 1 : 0
-
-#   zone_id = aws_route53_zone.this.zone_id
-#   name    = var.domain_name
-#   type    = "MX"
-#   ttl     = 300
-#   records = ["10 inbound-smtp.${var.aws_region}.amazonaws.com"]
-
-#   tags = var.tags
-
-# }
-
-# resource "aws_workmail_user" "this" {
-#   for_each = { for user in var.users : user.name => user }
-
-#   organization_id = aws_workmail_organization.this.id
-#   name            = each.value.name
-#   display_name    = each.value.display_name
-#   password        = each.value.password
-
-#   tags = var.tags
-
-# }
-
-# resource "aws_workmail_user_alias" "this" {
-#   for_each = { for user in var.users : user.name => user if length(user.aliases) > 0 }
-
-#   organization_id = aws_workmail_organization.this.id
-#   user_id         = aws_workmail_user.this[each.key].id
-#   alias           = each.value.aliases[0] # Assign the first alias for simplicity
-
-#   tags = var.tags
-
-# }
 
