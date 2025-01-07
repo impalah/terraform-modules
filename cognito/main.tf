@@ -62,7 +62,7 @@ resource "aws_cognito_user_pool" "userpool" {
 
   password_policy {
     minimum_length                   = var.password_policy.minimum_length
-    password_history_size            = var.password_policy.password_history_size
+    # password_history_size            = var.password_policy.password_history_size
     require_lowercase                = var.password_policy.require_lowercase
     require_numbers                  = var.password_policy.require_numbers
     require_symbols                  = var.password_policy.require_symbols
