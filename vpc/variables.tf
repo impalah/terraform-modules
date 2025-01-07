@@ -1,3 +1,16 @@
+variable "default_tags" {
+  description = "A map of default tags to add to all resources"
+  type        = map(string)
+  default     = {
+    environment   = "production"
+    deployment    = "terraform"
+    cost-center   = "12345"
+    project       = "my-project"
+    owner         = "owner-name"
+    creation-date = ""
+  }
+}
+
 variable "vpc_name" {
   description = "Name to be used on all the resources as identifier"
   type        = string
@@ -34,12 +47,6 @@ variable "tags" {
   default     = {}
 }
 
-variable "vpc_tags" {
-  description = "Additional tags for the VPC"
-  type        = map(string)
-  default     = {}
-}
-
 variable "instance_tenancy" {
   description = "A tenancy option for instances launched into the VPC"
   type        = string
@@ -64,7 +71,27 @@ variable "subnets_configuration" {
   default = []
 }
 
+variable "private_subnets_configuration" {
+  description = "Configuration for private subnets"
+  type = list(object({
+    name              = string
+    cidr_block        = string
+    availability_zone = string
+    subnet_type       = string
+  }))
+  default = []
+}
 
+variable "public_subnets_configuration" {
+  description = "Configuration for public subnets"
+  type = list(object({
+    name              = string
+    cidr_block        = string
+    availability_zone = string
+    subnet_type       = string
+  }))
+  default = []
+}
 
 
 
