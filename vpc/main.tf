@@ -1,3 +1,8 @@
+locals {
+  private_subnets_configuration = tolist([for subnet in var.subnets_configuration : subnet if subnet.subnet_type == "private"])
+  public_subnets_configuration  = tolist([for subnet in var.subnets_configuration : subnet if subnet.subnet_type == "public"])
+}
+
 
 resource "aws_vpc" "this" {
   assign_generated_ipv6_cidr_block     = var.enable_ipv6
@@ -10,12 +15,12 @@ resource "aws_vpc" "this" {
   tags = merge(
     { "Name" = var.vpc_name },
     var.tags,
-    var.vpc_tags,
+    var.default_tags,
   )
 }
 
 resource "aws_subnet" "private-subnet" {
-  for_each                = { for idx, subnet in var.subnets_configuration : idx => subnet if subnet.subnet_type == "private" }
+  for_each                = { for idx, subnet in local.private_subnets_configuration : idx => subnet }
   availability_zone       = each.value.availability_zone
   cidr_block              = each.value.cidr_block
   vpc_id                  = aws_vpc.this.id
@@ -24,13 +29,13 @@ resource "aws_subnet" "private-subnet" {
   tags = merge(
     { "Name" = format("%s/%s", var.vpc_name, each.value.name) },
     var.tags,
-    var.vpc_tags,
+    var.default_tags,
   )
 
 }
 
 resource "aws_subnet" "public-subnet" {
-  for_each                = { for idx, subnet in var.subnets_configuration : idx => subnet if subnet.subnet_type == "public" }
+  for_each                = { for idx, subnet in local.public_subnets_configuration : idx => subnet }
   availability_zone       = each.value.availability_zone
   cidr_block              = each.value.cidr_block
   vpc_id                  = aws_vpc.this.id
@@ -39,7 +44,7 @@ resource "aws_subnet" "public-subnet" {
   tags = merge(
     { "Name" = format("%s/%s", var.vpc_name, each.value.name) },
     var.tags,
-    var.vpc_tags,
+    var.default_tags,
   )
 
 }
@@ -51,7 +56,7 @@ resource "aws_route_table" "private-subnet-route-table" {
   tags = merge(
     { "Name" = format("%s/rt-private-%s", var.vpc_name, each.key) },
     var.tags,
-    var.vpc_tags,
+    var.default_tags,
   )
 
 }
@@ -70,7 +75,7 @@ resource "aws_route_table" "public-subnet-route-table" {
   tags = merge(
     { "Name" = format("%s/rt-public-%s", var.vpc_name, each.key) },
     var.tags,
-    var.vpc_tags,
+    var.default_tags,
   )
 
 }
@@ -89,7 +94,7 @@ resource "aws_eip" "nat" {
   tags = merge(
     { "Name" = format("%s/NAT-EIP%s", var.vpc_name, count.index + 1) },
     var.tags,
-    var.vpc_tags,
+    var.default_tags,
   )
 }
 
@@ -103,7 +108,7 @@ resource "aws_internet_gateway" "internet-gateway" {
   tags = merge(
     { "Name" = format("%s/%s", var.vpc_name, "InternetGateway") },
     var.tags,
-    var.vpc_tags,
+    var.default_tags,
   )
 
   vpc_id = aws_vpc.this.id
@@ -118,12 +123,12 @@ resource "aws_internet_gateway" "internet-gateway" {
 resource "aws_nat_gateway" "nat_gateway" {
   for_each      = aws_subnet.public-subnet
   allocation_id = aws_eip.nat[each.key].id
-  subnet_id     = each.value.id  # Ahora usa subredes públicas
+  subnet_id     = each.value.id  # Use public subnets
 
   tags = merge(
     { "Name" = format("%s/%s", var.vpc_name, "NATGateway") },
     var.tags,
-    var.vpc_tags,
+    var.default_tags,
   )
 
   depends_on = [aws_internet_gateway.internet-gateway]
