@@ -30,3 +30,15 @@ variable "tags" {
   default     = {}
 }
 
+variable "default_tags" {
+  description = "A map of default tags to add to all resources"
+  type        = map(string)
+  default     = {
+    environment   = "production"
+    deployment    = "terraform"
+    cost-center   = "12345"
+    project       = "my-project"
+    owner         = "owner-name"
+    creation-date = ""
+  }
+}
