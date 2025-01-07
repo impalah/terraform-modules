@@ -22,3 +22,13 @@ output "public_subnet_azs" {
   value       = { for key, subnet in aws_subnet.public-subnet : key => subnet.availability_zone }
 }
 
+output "private_route_tables" {
+  description = "IDs of the created private route tables"
+  value       = { for key, rt in aws_route_table.private-subnet-route-table : key => rt.id }
+}
+
+output "public_route_tables" {
+  description = "IDs of the created public route tables"
+  value       = { for key, rt in aws_route_table.public-subnet-route-table : key => rt.id }
+}
+
