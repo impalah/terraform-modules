@@ -1,42 +1,28 @@
 
 resource "aws_vpc_endpoint" "this" {
-  for_each = { for idx, ep in var.endpoints : idx => ep }
-
-  vpc_id       = var.vpc_id
-  service_name = each.value.service_name
+  for_each       = { for idx, ep in var.endpoints : idx => ep }
+  vpc_id         = var.vpc_id
+  service_name   = each.value.service_name
   vpc_endpoint_type = each.value.type
 
-  dynamic "subnet_ids" {
-    for_each = each.value.type == "Interface" ? [1] : []
-    content {
-      value = var.subnet_ids
-    }
-  }
+  # Subnets for Interface Endpoints
+  subnet_ids = each.value.type == "Interface" ? var.subnet_ids : null
 
-  dynamic "route_table_ids" {
-    for_each = each.value.type == "Gateway" ? [1] : []
-    content {
-      value = each.value.route_table_ids
-    }
-  }
+  # Route tables for Gateway Endpoints
+  route_table_ids = each.value.type == "Gateway" ? each.value.route_table_ids : null
 
-  private_dns_enabled = lookup(each.value, "private_dns", false)
+  # Private DNS for Interface Endpoints
+  private_dns_enabled = each.value.type == "Interface" ? lookup(each.value, "private_dns", true) : null
 
-  dynamic "policy" {
-    for_each = each.value.policy != null ? [1] : []
-    content {
-      value = each.value.policy
-    }
-  }
+  # Custom Policy for Gateway or Interface Endpoints
+  policy = each.value.policy
 
-  tags = {
-    Name = each.value.name
-  }
+  # Security groups for Interface Endpoints
+  security_group_ids = each.value.type == "Interface" ? each.value.security_groups : null
 
-  dynamic "security_group_ids" {
-    for_each = each.value.type == "Interface" && length(each.value.security_groups) > 0 ? [1] : []
-    content {
-      value = each.value.security_groups
-    }
-  }
+  tags = merge(
+    { "Name" = var.vpc_name },
+    var.tags,
+    var.default_tags,
+  )
 }
