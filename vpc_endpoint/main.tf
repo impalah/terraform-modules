@@ -21,7 +21,7 @@ resource "aws_vpc_endpoint" "this" {
   security_group_ids = each.value.type == "Interface" ? each.value.security_groups : null
 
   tags = merge(
-    { "Name" = var.vpc_name },
+    { Name = each.value.name },
     var.tags,
     var.default_tags,
   )
