@@ -189,15 +189,15 @@ variable "verification_message_template" {
     error_message = "default_email_option must be either 'CONFIRM_WITH_CODE' or 'CONFIRM_WITH_LINK'."
   }
   validation {
-    condition     = var.verification_message_template.email_message == null || contains(var.verification_message_template.email_message, "{####}")
+    condition     = var.verification_message_template.email_message == null || can(regex("{####}", var.verification_message_template.email_message))
     error_message = "email_message must contain the {####} placeholder."
   }
   validation {
-    condition     = var.verification_message_template.email_message_by_link == null || contains(var.verification_message_template.email_message_by_link, "{##Click Here##}")
+    condition     = var.verification_message_template.email_message_by_link == null || can(regex("{##Click Here##}", var.verification_message_template.email_message_by_link))
     error_message = "email_message_by_link must contain the {##Click Here##} placeholder."
   }
   validation {
-    condition     = var.verification_message_template.sms_message == null || contains(var.verification_message_template.sms_message, "{####}")
+    condition     = var.verification_message_template.sms_message == null || can(regex("{####}", var.verification_message_template.sms_message))
     error_message = "sms_message must contain the {####} placeholder."
   }
   default = {
