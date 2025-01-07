@@ -137,6 +137,15 @@ variable "password_policy" {
     condition     = var.password_policy.password_history_size >= 0 && var.password_policy.password_history_size <= 24
     error_message = "password_history_size must be between 0 and 24."
   }
+  default = {
+    minimum_length                   = 8
+    password_history_size            = 0
+    require_lowercase                = true
+    require_numbers                  = true
+    require_symbols                  = true
+    require_uppercase                = true
+    temporary_password_validity_days = 7
+  }
 }
 
 
@@ -191,8 +200,15 @@ variable "verification_message_template" {
     condition     = var.verification_message_template.sms_message == null || contains(var.verification_message_template.sms_message, "{####}")
     error_message = "sms_message must contain the {####} placeholder."
   }
+  default = {
+    default_email_option  = "CONFIRM_WITH_CODE"
+    email_message         = "Your verification code is {####}"
+    email_message_by_link = "Click {##Click Here##} to verify your email address."
+    email_subject         = "Your verification code"
+    email_subject_by_link = "Verify your email address"
+    sms_message           = "Your verification code is {####}"
+  }
 }
-
 
 
 
