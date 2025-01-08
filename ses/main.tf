@@ -1,62 +1,37 @@
-
-resource "aws_ses_account" "account" {
-  sandbox_enabled = var.enable_sandbox
-}
-
-resource "aws_ses_domain_identity" "domain" {
-  count = var.use_domain ? 1 : 0
+# Verify a domain for SES (if use_domain is true)
+resource "aws_ses_domain_identity" "domain_identity" {
+  count  = var.use_domain ? 1 : 0
   domain = var.domain_name
 
-  tags = merge(
-    var.tags,
-    var.default_tags,
-  )
-
 }
 
-resource "aws_ses_domain_dkim" "dkim" {
-  count = var.use_domain ? 1 : 0
-  domain = aws_ses_domain_identity.domain[0].id
-
-  depends_on = [aws_ses_domain_identity.domain]
+# Generate DKIM tokens for the domain (if use_domain is true)
+resource "aws_ses_domain_dkim" "domain_dkim" {
+  count  = var.use_domain ? 1 : 0
+  domain = aws_ses_domain_identity.domain_identity[0].domain
 }
 
-resource "aws_route53_record" "domain_verification" {
-  count = var.use_domain ? length(keys(aws_ses_domain_identity.domain[0].verification_attributes)) : 0
-
-  zone_id = data.aws_route53_zone.zone.id
-  name    = element(keys(aws_ses_domain_identity.domain[0].verification_attributes), count.index)
-  type    = aws_ses_domain_identity.domain[0].verification_attributes[element(keys(aws_ses_domain_identity.domain[0].verification_attributes), count.index)].type
-  ttl     = 300
-  records = [aws_ses_domain_identity.domain[0].verification_attributes[element(keys(aws_ses_domain_identity.domain[0].verification_attributes), count.index)].value]
-}
-
-resource "aws_ses_domain_identity_verification" "verify_domain" {
-  count = var.use_domain ? 1 : 0
-  domain = aws_ses_domain_identity.domain[0].id
-
-  depends_on = [aws_route53_record.domain_verification]
-}
-
+# DNS records for DKIM tokens (if use_domain is true and Route 53 is used)
 resource "aws_route53_record" "dkim_records" {
-  count = var.use_domain ? length(aws_ses_domain_dkim.dkim_tokens) : 0
+  count = var.use_domain ? 3 : 0
 
-  zone_id = data.aws_route53_zone.zone.id
-  name    = "${element(aws_ses_domain_dkim.dkim_tokens, count.index)}._domainkey.${var.domain_name}"
+  zone_id = data.aws_route53_zone.zone[0].id
+  name    = "${element(aws_ses_domain_dkim.domain_dkim[0].dkim_tokens, count.index)}._domainkey.${var.domain_name}"
   type    = "CNAME"
   ttl     = 300
-  records = ["${element(aws_ses_domain_dkim.dkim_tokens, count.index)}.dkim.amazonses.com"]
+  records = ["${element(aws_ses_domain_dkim.domain_dkim[0].dkim_tokens, count.index)}.dkim.amazonses.com"]
 }
 
+# Verify email addresses for SES
 resource "aws_ses_email_identity" "email_verifications" {
   for_each = toset(var.email_addresses)
 
   email = each.value
 }
 
+# Get the Route 53 Zone ID (if use_domain is true)
 data "aws_route53_zone" "zone" {
   count        = var.use_domain ? 1 : 0
   name         = var.domain_name
   private_zone = false
 }
-
