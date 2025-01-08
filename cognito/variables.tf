@@ -14,7 +14,6 @@ variable "default_tags" {
 variable "userpool_name" {
   description = "User pool name"
   type        = string
-  default     = null
 }
 
 variable "account_recovery_setting" {
@@ -257,11 +256,6 @@ variable "groups" {
   default     = []
 }
 
-variable "client_callback_urls" {
-  description = "Callback urls"
-  type        = set(string)
-  default     = []
-}
 
 variable "scopes" {
   description = "A list of scopes for API users"
