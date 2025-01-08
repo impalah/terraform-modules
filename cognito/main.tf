@@ -91,67 +91,9 @@ resource "aws_cognito_user_pool" "userpool" {
 }
 
 
-# Basic authentication client
-resource "aws_cognito_user_pool_client" "public_client" {
-  name = format("%s-public-client", var.userpool_name)
-
-  user_pool_id                  = aws_cognito_user_pool.userpool.id
-  generate_secret               = false
-  refresh_token_validity        = 90
-  access_token_validity = 10
-  id_token_validity = 1
-  prevent_user_existence_errors = "ENABLED"
-  explicit_auth_flows = [
-    "ALLOW_REFRESH_TOKEN_AUTH",
-    "ALLOW_USER_PASSWORD_AUTH",
-    "ALLOW_ADMIN_USER_PASSWORD_AUTH"
-  ]
-
-  callback_urls                        = var.client_callback_urls
-  allowed_oauth_flows_user_pool_client = true
-
-  allowed_oauth_flows          = ["code", "implicit"]
-  allowed_oauth_scopes         = ["email", "openid", "phone", "profile"]
-  supported_identity_providers = ["COGNITO"]
-
-}
-
-# Something went wrong: An error occurred (InvalidParameterException) when calling the InitiateAuth operation: USER_PASSWORD_AUTH flow not enabled for this client
-
-
-# M2M authentication client
-resource "aws_cognito_user_pool_client" "api_client" {
-  name = format("%s-api-client", var.userpool_name)
-
-  user_pool_id                  = aws_cognito_user_pool.userpool.id
-  generate_secret               = true
-  refresh_token_validity        = 90
-  prevent_user_existence_errors = "ENABLED"
-  explicit_auth_flows = [
-    "ALLOW_REFRESH_TOKEN_AUTH",
-    "ALLOW_USER_PASSWORD_AUTH",
-    "ALLOW_ADMIN_USER_PASSWORD_AUTH",
-    "ALLOW_USER_SRP_AUTH"
-  ]
-
-  callback_urls                        = ["http://localhost:4200"]
-  allowed_oauth_flows_user_pool_client = true
-
-  allowed_oauth_flows          = ["client_credentials"]
-  allowed_oauth_scopes         = [format("%s/admin", var.resource_server_identifier)]
-  supported_identity_providers = ["COGNITO"]
-
-  depends_on = [aws_cognito_resource_server.resource]
-
-
-}
-
-
-
-
 # Basic domain for authentication
 resource "aws_cognito_user_pool_domain" "cognito-domain" {
-  domain       = var.userpool_domain
+  domain = coalesce(var.userpool_domain, var.userpool_name)
   user_pool_id = aws_cognito_user_pool.userpool.id
 }
 
@@ -161,8 +103,8 @@ resource "aws_cognito_user_pool_domain" "cognito-domain" {
 ################################################################################
 
 resource "aws_cognito_resource_server" "resource" {
-  identifier = var.resource_server_identifier
-  name       = var.resource_server_name
+  identifier = coalesce(var.resource_server_identifier, format("%s-rsid", var.userpool_name))
+  name       = coalesce(var.resource_server_name, format("%s-rs", var.userpool_name))
 
   dynamic "scope" {
     for_each = var.scopes
@@ -190,3 +132,5 @@ resource "aws_cognito_user_group" "main" {
   user_pool_id = aws_cognito_user_pool.userpool.id
 
 }
+
+
