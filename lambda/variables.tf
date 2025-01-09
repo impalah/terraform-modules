@@ -114,11 +114,11 @@ variable "function_cmd" {
 }
 
 variable "image_config" {
-  description = "Image configuration values"
+  description = "Configuration block for image configuration of the Lambda function"
   type = object({
-    command                = optional(string)
-    entry_point            = optional(string)
-    working_directory      = optional(string)
+    command = optional(list(string))
+    entry_point = optional(list(string))
+    working_directory = optional(string)
   })
+  default = {}
 }
-
