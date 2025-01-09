@@ -2,8 +2,6 @@
 # Step by step API gateway
 # ###################################################################################
 
-provider "random" {}
-
 data "aws_region" "current" {}
 
 data "aws_caller_identity" "current" {}
