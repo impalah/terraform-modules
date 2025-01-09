@@ -72,7 +72,11 @@ resource "aws_lambda_function" "lambda_function" {
     mode = "PassThrough"
   }
 
-  image_config = var.image_config
+  image_config {
+    command            = var.image_config.command
+    entry_point        = var.image_config.entry_point
+    working_directory  = var.image_config.working_directory
+  }
 
   vpc_config {
     subnet_ids         = var.vpc_subnets_ids
