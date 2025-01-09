@@ -87,8 +87,21 @@ variable "timeout_milliseconds" {
   }
 }
 
-variable "route_key" {
-  description = "The route key for the route"
+variable "route_method" {
+  description = "The route method for the route"
   type        = string
-  default     = "$default"
+  default     = "ANY"
 }
+
+variable "route_path" {
+  description = "The route path for the route"
+  type        = string
+  default     = "/{proxy+}"
+}
+
+variable "function_name" {
+  description = "The name of the Lambda function"
+  type        = string
+  default     = null
+}
+

@@ -2,7 +2,11 @@
 # Step by step API gateway
 # ###################################################################################
 
+provider "random" {}
 
+data "aws_region" "current" {}
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_apigatewayv2_vpc_link" "apigw_vpc_link" {
 
@@ -70,7 +74,7 @@ resource "aws_apigatewayv2_route" "apigw_route" {
   # api_key_required   = false
   # authorization_type = "NONE"
 
-  route_key = var.route_key
+  route_key = format("%s %s", var.route_method, var.route_path)
   target    = "integrations/${aws_apigatewayv2_integration.apigw_integration.id}"
 
   depends_on = [
@@ -79,6 +83,32 @@ resource "aws_apigatewayv2_route" "apigw_route" {
 
 
 }
+
+
+# Integration permissions on lambda
+
+resource "random_uuid" "lambda" {}
+
+resource "aws_lambda_permission" "apigw_lambda" {
+
+  count = var.function_name != "" ? 1 : 0
+  
+  statement_id  = random_uuid.lambda.result
+  action        = "lambda:InvokeFunction"
+  function_name = var.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = format("arn:aws:execute-api:%s:%s:%s/*/*%s", data.aws_region.current.name, data.aws_caller_identity.current.account_id, aws_apigatewayv2_api.api.id, var.route_path)
+}
+
+
+output "api_gateway_id" {
+  value = aws_apigatewayv2_api.api.id
+}
+
+output "api_gateway_stage_message" {
+  value = "aws [--profile my_profile] apigatewayv2 create-stage --region ${data.aws_region.current.name} --auto-deploy --api-id ${aws_apigatewayv2_api.api.id} --stage-name '$default'"
+}
+
 
 # Stage does not work using Terraform
 # aws cli used instead
