@@ -84,11 +84,10 @@ resource "aws_lambda_function" "lambda_function" {
   }
 
   tags = merge(
-    # { "Name" = format("%s_%s", var.environment, var.function_name) },
     { "Name" = var.function_name },
     var.tags,
+    var.default_tags,
   )
-
 
 }
 
@@ -96,5 +95,10 @@ resource "aws_lambda_function" "lambda_function" {
 resource "aws_cloudwatch_log_group" "lambda_log_group" {
   name              = "/aws/lambda/${aws_lambda_function.lambda_function.function_name}"
   retention_in_days = 14
+}
+
+
+output "invoke_arn" {
+  value = aws_lambda_function.lambda_function.invoke_arn
 }
 
