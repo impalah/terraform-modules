@@ -8,7 +8,7 @@ resource "aws_iam_role" "lambda_exec_role" {
 }
 
 resource "aws_iam_role_policy" "lambda_exec_role_policy" {
-  name   = format("lambda_exec_policy_without_createloggroup", var.function_name)
+  name   = format("%s-lambda_exec_policy", var.function_name)
   role   = aws_iam_role.lambda_exec_role.id
   policy = var.exec_role_policy
 }
