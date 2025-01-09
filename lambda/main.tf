@@ -1,0 +1,96 @@
+################################################################################
+# Role and policy configurations
+################################################################################
+
+resource "aws_iam_role" "lambda_exec_role" {
+  name               = format("%s-lambda_exec_role", var.function_name)
+  assume_role_policy = coalesce(var.assume_role_policy, file("${path.module}/policies/lambda-role-policy.json"))  
+}
+
+resource "aws_iam_role_policy" "lambda_exec_role_policy" {
+  name   = format("lambda_exec_policy_without_createloggroup", var.function_name)
+  role   = aws_iam_role.lambda_exec_role.id
+  policy = var.exec_role_policy
+}
+
+resource "aws_security_group" "lambda_sg" {
+  name        = format("%s-lambda_sg", var.function_name)
+  description = "Security group for Lambda function"
+  vpc_id      = var.vpc_id
+
+  dynamic "ingress" {
+    for_each = var.ports
+    content {
+      from_port = ingress.value
+      to_port   = ingress.value
+      protocol  = "tcp"
+      cidr_blocks = [
+        "0.0.0.0/0"
+      ]
+      # TODO: only allow from the load balancer
+      # security_groups = [
+      #   "${aws_security_group.ServiceLBSecurityGroup.id}"
+      # ]
+      description = format("Allow from anyone on port %d", ingress.value)
+    }
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Lambda function from ECR image
+resource "aws_lambda_function" "lambda_function" {
+
+  architectures = var.function_architectures
+
+  dynamic "environment" {
+    for_each = length(var.env_variables) > 0 ? [var.env_variables] : []
+    content {
+      variables = environment.value
+    }
+  }
+
+  ephemeral_storage {
+    size = var.function_storage
+  }
+
+  function_name                  = var.function_name
+  image_uri                      = var.image
+  memory_size                    = var.function_memory
+  package_type                   = "Image"
+  reserved_concurrent_executions = "-1"
+  role                           = aws_iam_role.lambda_exec_role.arn
+  skip_destroy                   = "false"
+  timeout                        = var.function_timeout
+
+  tracing_config {
+    mode = "PassThrough"
+  }
+
+  image_config = var.image_config
+
+  vpc_config {
+    subnet_ids         = var.vpc_subnets_ids
+    security_group_ids = [aws_security_group.lambda_sg.id]
+  }
+
+  tags = merge(
+    # { "Name" = format("%s_%s", var.environment, var.function_name) },
+    { "Name" = var.function_name },
+    var.tags,
+  )
+
+
+}
+
+# Cloudwatch log group
+resource "aws_cloudwatch_log_group" "lambda_log_group" {
+  name              = "/aws/lambda/${aws_lambda_function.lambda_function.function_name}"
+  retention_in_days = 14
+}
+
