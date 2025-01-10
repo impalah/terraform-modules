@@ -112,7 +112,7 @@ variable "route_path" {
 variable "function_name" {
   description = "The name of the Lambda function"
   type        = string
-  default     = null
+  default     = ""
 }
 
 variable "stage_name" {
