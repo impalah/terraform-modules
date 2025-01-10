@@ -22,7 +22,7 @@ variable "api_type" {
   type        = string
   default     = "HTTP"
   validation {
-    condition     = contains(["HTTP", "REST"], var.integration_type)
+    condition     = contains(["HTTP", "REST"], var.api_type)
     error_message = "api_type must be either 'HTTP' or 'REST'."
   }
 }
@@ -111,6 +111,12 @@ variable "route_path" {
 
 variable "function_name" {
   description = "The name of the Lambda function"
+  type        = string
+  default     = null
+}
+
+variable "stage_name" {
+  description = "Name for the stage"
   type        = string
   default     = null
 }

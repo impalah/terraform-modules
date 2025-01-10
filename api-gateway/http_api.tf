@@ -101,42 +101,41 @@ resource "aws_lambda_permission" "apigw_lambda" {
 }
 
 
-output "api_gateway_id" {
-  value = aws_apigatewayv2_api.api.id
-  count = var.api_type == "HTTP" ? 1 : 0
+output "http_api_gateway_id" {
+  value = var.api_type == "HTTP" ? aws_apigatewayv2_api.api.id : null
 }
 
-output "api_gateway_stage_message" {
-  value = "aws [--profile my_profile] apigatewayv2 create-stage --region ${data.aws_region.current.name} --auto-deploy --api-id ${aws_apigatewayv2_api.api.id} --stage-name '$default'"
-  count = var.api_type == "HTTP" ? 1 : 0  
+output "http_api_gateway_stage_message" {
+  value = var.api_type == "HTTP" ? "aws [--profile my_profile] apigatewayv2 create-stage --region ${data.aws_region.current.name} --auto-deploy --api-id ${aws_apigatewayv2_api.api.id} --stage-name '$default'" : null
 }
-
 
 # Stage does not work using Terraform
 # aws cli used instead
 
-# resource "aws_apigatewayv2_stage" "ApiGatewayV2Stage" {
-#   name = "$default"
-#   # stage_variables {}
-#   api_id = aws_apigatewayv2_api.api.id
-#   default_route_settings {
-#     logging_level            = "INFO"
-#     detailed_metrics_enabled = false
-#   }
-#   auto_deploy = true
-#   tags        = var.tags
+resource "aws_apigatewayv2_stage" "stage" {
+  count = var.stage_name != null && var.api_type == "HTTP" ? 1 : 0
 
-#   depends_on = [
-#     aws_apigatewayv2_route.apigw_route
-#   ]
+  name = var.stage_name
+
+  # stage_variables {}
+  api_id = aws_apigatewayv2_api.api.id
+  default_route_settings {
+    logging_level            = "INFO"
+    detailed_metrics_enabled = false
+  }
+  auto_deploy = true
+
+  depends_on = [
+    aws_apigatewayv2_route.apigw_route
+  ]
 
 
-#   # Bug in terraform-aws-provider with perpetual diff
-#   lifecycle {
-#     ignore_changes = [deployment_id]
-#   }
+  # # Bug in terraform-aws-provider with perpetual diff
+  # lifecycle {
+  #   ignore_changes = [deployment_id]
+  # }
 
-# }
+}
 
 
 
