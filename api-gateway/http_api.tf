@@ -40,7 +40,7 @@ resource "aws_apigatewayv2_api" "api" {
 resource "aws_apigatewayv2_integration" "apigw_integration" {
   count = var.api_type == "HTTP" ? 1 : 0
 
-  api_id             = aws_apigatewayv2_api.api.id
+  api_id             = aws_apigatewayv2_api.api[count.index].id
   description        = format("%s Integration", var.integration_type)
 
   integration_type   = var.integration_type
@@ -66,13 +66,13 @@ resource "aws_apigatewayv2_route" "apigw_route" {
 
   count = var.api_type == "HTTP" ? 1 : 0
 
-  api_id = aws_apigatewayv2_api.api.id
+  api_id             = aws_apigatewayv2_api.api[count.index].id
 
   # api_key_required   = false
   # authorization_type = "NONE"
 
   route_key = format("%s %s", var.route_method, var.route_path)
-  target    = "integrations/${aws_apigatewayv2_integration.apigw_integration.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.apigw_integration[count.index].id}"
 
   depends_on = [
     aws_apigatewayv2_integration.apigw_integration
@@ -93,20 +93,21 @@ resource "aws_lambda_permission" "apigw_lambda" {
 
   count = var.api_type == "HTTP" && var.function_name != "" ? 1 : 0
   
-  statement_id  = random_uuid.lambda.result
+  statement_id  = random_uuid.lambda[count.index].result
   action        = "lambda:InvokeFunction"
   function_name = var.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = format("arn:aws:execute-api:%s:%s:%s/*/*%s", data.aws_region.current.name, data.aws_caller_identity.current.account_id, aws_apigatewayv2_api.api.id, var.route_path)
+  source_arn    = format("arn:aws:execute-api:%s:%s:%s/*/*%s", data.aws_region.current.name, data.aws_caller_identity.current.account_id, aws_apigatewayv2_api.api[count.index].id, var.route_path)
 }
+
 
 
 output "http_api_gateway_id" {
-  value = var.api_type == "HTTP" ? aws_apigatewayv2_api.api.id : null
+  value = var.api_type == "HTTP" ? aws_apigatewayv2_api.api[0].id : null
 }
 
 output "http_api_gateway_stage_message" {
-  value = var.api_type == "HTTP" ? "aws [--profile my_profile] apigatewayv2 create-stage --region ${data.aws_region.current.name} --auto-deploy --api-id ${aws_apigatewayv2_api.api.id} --stage-name '$default'" : null
+  value = var.api_type == "HTTP" ? "aws [--profile my_profile] apigatewayv2 create-stage --region ${data.aws_region.current.name} --auto-deploy --api-id ${aws_apigatewayv2_api.api[0].id} --stage-name '$default'" : null
 }
 
 # Stage does not work using Terraform
@@ -118,7 +119,7 @@ resource "aws_apigatewayv2_stage" "stage" {
   name = var.stage_name
 
   # stage_variables {}
-  api_id = aws_apigatewayv2_api.api.id
+  api_id             = aws_apigatewayv2_api.api[count.index].id
   default_route_settings {
     logging_level            = "INFO"
     detailed_metrics_enabled = false
