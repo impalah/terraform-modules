@@ -17,6 +17,16 @@ variable "tags" {
   default     = {}
 }
 
+variable "api_type" {
+  description = "API type. Valid values: HTTP, REST."
+  type        = string
+  default     = "HTTP"
+  validation {
+    condition     = contains(["HTTP", "REST"], var.integration_type)
+    error_message = "api_type must be either 'HTTP' or 'REST'."
+  }
+}
+
 variable "api_name" {
   description = "Api name"
   type        = string

@@ -1,14 +1,9 @@
 # ###################################################################################
-# Step by step API gateway
+# Step by step HTTP API gateway
 # ###################################################################################
 
-data "aws_region" "current" {}
-
-data "aws_caller_identity" "current" {}
-
 resource "aws_apigatewayv2_vpc_link" "apigw_vpc_link" {
-
-  count = length(var.vpc_subnets_ids) > 0 ? 1 : 0
+  count = var.api_type == "HTTP" && length(var.vpc_subnets_ids) > 0 ? 1 : 0
 
   name               = format("%s-http-vpc-link", var.api_name)
   security_group_ids = []
@@ -19,10 +14,11 @@ resource "aws_apigatewayv2_vpc_link" "apigw_vpc_link" {
     var.tags,
     var.default_tags,
   )
-
 }
 
+
 resource "aws_apigatewayv2_api" "api" {
+  count = var.api_type == "HTTP" ? 1 : 0
 
   protocol_type = var.protocol_type
 
@@ -40,8 +36,9 @@ resource "aws_apigatewayv2_api" "api" {
 
 }
 
-
+# tODO: extend for diferent routes and integrations
 resource "aws_apigatewayv2_integration" "apigw_integration" {
+  count = var.api_type == "HTTP" ? 1 : 0
 
   api_id             = aws_apigatewayv2_api.api.id
   description        = format("%s Integration", var.integration_type)
@@ -67,6 +64,8 @@ resource "aws_apigatewayv2_integration" "apigw_integration" {
 
 resource "aws_apigatewayv2_route" "apigw_route" {
 
+  count = var.api_type == "HTTP" ? 1 : 0
+
   api_id = aws_apigatewayv2_api.api.id
 
   # api_key_required   = false
@@ -85,11 +84,14 @@ resource "aws_apigatewayv2_route" "apigw_route" {
 
 # Integration permissions on lambda
 
-resource "random_uuid" "lambda" {}
+resource "random_uuid" "lambda" {
+  count = var.api_type == "HTTP" ? 1 : 0
+
+}
 
 resource "aws_lambda_permission" "apigw_lambda" {
 
-  count = var.function_name != "" ? 1 : 0
+  count = var.api_type == "HTTP" && var.function_name != "" ? 1 : 0
   
   statement_id  = random_uuid.lambda.result
   action        = "lambda:InvokeFunction"
@@ -101,10 +103,12 @@ resource "aws_lambda_permission" "apigw_lambda" {
 
 output "api_gateway_id" {
   value = aws_apigatewayv2_api.api.id
+  count = var.api_type == "HTTP" ? 1 : 0
 }
 
 output "api_gateway_stage_message" {
   value = "aws [--profile my_profile] apigatewayv2 create-stage --region ${data.aws_region.current.name} --auto-deploy --api-id ${aws_apigatewayv2_api.api.id} --stage-name '$default'"
+  count = var.api_type == "HTTP" ? 1 : 0  
 }
 
 
