@@ -2,6 +2,16 @@
 # Step by step HTTP API gateway
 # ###################################################################################
 
+variable "create_lambda_permission" {
+  description = "Flag to determine if lambda permission should be created"
+  type        = bool
+  default     = false
+}
+
+locals {
+  create_lambda_permission = var.api_type == "HTTP" && var.function_name != ""
+}
+
 resource "aws_apigatewayv2_vpc_link" "apigw_vpc_link" {
   count = var.api_type == "HTTP" && length(var.vpc_subnets_ids) > 0 ? 1 : 0
 
@@ -91,7 +101,7 @@ resource "random_uuid" "lambda" {
 
 resource "aws_lambda_permission" "apigw_lambda" {
 
-  count = var.api_type == "HTTP" && var.function_name != "" ? 1 : 0
+  count = local.create_lambda_permission ? 1 : 0
   
   statement_id  = random_uuid.lambda[count.index].result
   action        = "lambda:InvokeFunction"
