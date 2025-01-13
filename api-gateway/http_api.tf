@@ -29,7 +29,7 @@ resource "aws_apigatewayv2_api" "api" {
   name = format("%s-http-api", var.api_name)
 
   tags = merge(
-    { "Name" = format("%s-http-vpc-link", var.api_name) },
+    { "Name" = format("%s-http-api", var.api_name) },
     var.tags,
     var.default_tags,
   )
