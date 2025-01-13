@@ -116,9 +116,6 @@ output "http_api_gateway_stage_message" {
 }
 
 
-resource "aws_api_gateway_account" "this" {
-  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch_logs.arn
-}
 
 resource "aws_iam_role" "api_gateway_cloudwatch_logs" {
   name = "api-gateway-cloudwatch-logs"
@@ -134,19 +131,23 @@ resource "aws_iam_role" "api_gateway_cloudwatch_logs" {
       }
     ]
   })
-  # managed_policy_arns = ["arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"]  
+}
+
+resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch_logs" {
+  role       = aws_iam_role.api_gateway_cloudwatch_logs.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+}
+
+resource "aws_api_gateway_account" "this" {
+  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch_logs.arn
 }
 
 resource "aws_cloudwatch_log_group" "api_gateway_logs_api" {
   # TODO: make configurable
   name              = format("/aws/apigateway/%s", var.api_name)
-  log_group_class   = "STANDARD"
   retention_in_days = 7
 }
 
-
-# Stage does not work using Terraform
-# aws cli used instead
 
 resource "aws_apigatewayv2_stage" "stage" {
 
