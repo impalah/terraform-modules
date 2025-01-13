@@ -2,16 +2,6 @@
 # Step by step HTTP API gateway
 # ###################################################################################
 
-variable "create_lambda_permission" {
-  description = "Flag to determine if lambda permission should be created"
-  type        = bool
-  default     = false
-}
-
-locals {
-  create_lambda_permission = var.api_type == "HTTP" && var.function_name != ""
-}
-
 resource "aws_apigatewayv2_vpc_link" "apigw_vpc_link" {
   count = var.api_type == "HTTP" && length(var.vpc_subnets_ids) > 0 ? 1 : 0
 
@@ -39,7 +29,7 @@ resource "aws_apigatewayv2_api" "api" {
   name = format("%s-http-api", var.api_name)
 
   tags = merge(
-    { "Name" = format("%s-http-vpc-link", var.api_name) },
+    { "Name" = format("%s-http-api", var.api_name) },
     var.tags,
     var.default_tags,
   )
@@ -50,19 +40,19 @@ resource "aws_apigatewayv2_api" "api" {
 resource "aws_apigatewayv2_integration" "apigw_integration" {
   count = var.api_type == "HTTP" ? 1 : 0
 
-  api_id             = aws_apigatewayv2_api.api[count.index].id
-  description        = format("%s Integration", var.integration_type)
+  api_id      = aws_apigatewayv2_api.api[count.index].id
+  description = format("%s Integration", var.integration_type)
 
-  integration_type   = var.integration_type
-  integration_uri    = var.integration_uri
-  integration_method = var.integration_method
+  integration_type       = var.integration_type
+  integration_uri        = var.integration_uri
+  integration_method     = var.integration_method
   payload_format_version = var.payload_format_version
 
   # Integration through VPC Link
   # connection_id      = aws_apigatewayv2_vpc_link.apigw_vpc_link.id
   # connection_type    = "VPC_LINK"
 
-  timeout_milliseconds   = var.timeout_milliseconds
+  timeout_milliseconds = var.timeout_milliseconds
 
   depends_on = [
     aws_apigatewayv2_api.api
@@ -76,7 +66,7 @@ resource "aws_apigatewayv2_route" "apigw_route" {
 
   count = var.api_type == "HTTP" ? 1 : 0
 
-  api_id             = aws_apigatewayv2_api.api[count.index].id
+  api_id = aws_apigatewayv2_api.api[count.index].id
 
   # api_key_required   = false
   # authorization_type = "NONE"
@@ -101,13 +91,18 @@ resource "random_uuid" "lambda" {
 
 resource "aws_lambda_permission" "apigw_lambda" {
 
-  count = local.create_lambda_permission ? 1 : 0
-  
+  count = var.api_type == "HTTP" && var.integration_service == "LAMBDA" ? 1 : 0
+
   statement_id  = random_uuid.lambda[count.index].result
   action        = "lambda:InvokeFunction"
-  function_name = var.function_name
+  function_name = var.lambda_function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = format("arn:aws:execute-api:%s:%s:%s/*/*%s", data.aws_region.current.name, data.aws_caller_identity.current.account_id, aws_apigatewayv2_api.api[count.index].id, var.route_path)
+
+  depends_on = [
+    aws_apigatewayv2_integration.apigw_integration
+  ]
+
 }
 
 
@@ -123,30 +118,30 @@ output "http_api_gateway_stage_message" {
 # Stage does not work using Terraform
 # aws cli used instead
 
-resource "aws_apigatewayv2_stage" "stage" {
-  count = var.stage_name != null && var.api_type == "HTTP" ? 1 : 0
+# resource "aws_apigatewayv2_stage" "stage" {
+#   count = var.stage_name != null && var.api_type == "HTTP" ? 1 : 0
 
-  name = var.stage_name
+#   name = var.stage_name
 
-  # stage_variables {}
-  api_id             = aws_apigatewayv2_api.api[count.index].id
-  default_route_settings {
-    logging_level            = "INFO"
-    detailed_metrics_enabled = false
-  }
-  auto_deploy = true
+#   # stage_variables {}
+#   api_id             = aws_apigatewayv2_api.api[count.index].id
+#   default_route_settings {
+#     logging_level            = "INFO"
+#     detailed_metrics_enabled = false
+#   }
+#   auto_deploy = true
 
-  depends_on = [
-    aws_apigatewayv2_route.apigw_route
-  ]
+#   depends_on = [
+#     aws_apigatewayv2_route.apigw_route
+#   ]
 
 
-  # # Bug in terraform-aws-provider with perpetual diff
-  # lifecycle {
-  #   ignore_changes = [deployment_id]
-  # }
+#   # # Bug in terraform-aws-provider with perpetual diff
+#   # lifecycle {
+#   #   ignore_changes = [deployment_id]
+#   # }
 
-}
+# }
 
 
 

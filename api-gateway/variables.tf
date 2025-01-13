@@ -1,7 +1,7 @@
 variable "default_tags" {
   description = "A map of default tags to add to all resources"
   type        = map(string)
-  default     = {
+  default = {
     environment   = "production"
     deployment    = "terraform"
     cost-center   = "12345"
@@ -109,10 +109,10 @@ variable "route_path" {
   default     = "/{proxy+}"
 }
 
-variable "function_name" {
+variable "lambda_function_name" {
   description = "The name of the Lambda function"
   type        = string
-  default     = ""
+  default     = null
 }
 
 variable "stage_name" {
@@ -120,5 +120,16 @@ variable "stage_name" {
   type        = string
   default     = null
 }
+
+variable "integration_service" {
+  description = "Integration service. Valid values: LAMBDA, VPC."
+  type        = string
+  default     = "LAMBDA"
+  validation {
+    condition     = contains(["LAMBDA", "VPC"], var.integration_service)
+    error_message = "integration_service must be either 'LAMBDA', or 'VPC'."
+  }
+}
+
 
 
