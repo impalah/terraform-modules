@@ -115,33 +115,79 @@ output "http_api_gateway_stage_message" {
   value = var.api_type == "HTTP" ? "aws [--profile my_profile] apigatewayv2 create-stage --region ${data.aws_region.current.name} --auto-deploy --api-id ${aws_apigatewayv2_api.api[0].id} --stage-name '$default'" : null
 }
 
+
+resource "aws_api_gateway_account" "this" {
+  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch_logs.arn
+}
+
+resource "aws_iam_role" "api_gateway_cloudwatch_logs" {
+  name = "api-gateway-cloudwatch-logs"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "apigateway.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+  # managed_policy_arns = ["arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"]  
+}
+
+resource "aws_cloudwatch_log_group" "api_gateway_logs_api" {
+  # TODO: make configurable
+  name              = format("/aws/apigateway/%s", var.api_name)
+  log_group_class   = "STANDARD"
+  retention_in_days = 7
+}
+
+
 # Stage does not work using Terraform
 # aws cli used instead
 
-# resource "aws_apigatewayv2_stage" "stage" {
-#   count = var.stage_name != null && var.api_type == "HTTP" ? 1 : 0
+resource "aws_apigatewayv2_stage" "stage" {
 
-#   name = var.stage_name
+  count       = var.api_type == "HTTP" ? 1 : 0
+  name        = var.stage_name
+  auto_deploy = var.stage_autodeploy
+  api_id      = aws_apigatewayv2_api.api[count.index].id
 
-#   # stage_variables {}
-#   api_id             = aws_apigatewayv2_api.api[count.index].id
-#   default_route_settings {
-#     logging_level            = "INFO"
-#     detailed_metrics_enabled = false
-#   }
-#   auto_deploy = true
+  # stage_variables {}
+  # TODO: add default route settings
+  default_route_settings {
+    # logging_level            = "INFO"
+    # detailed_metrics_enabled = false
+    throttling_burst_limit = 10
+    throttling_rate_limit  = 10
+  }
 
-#   depends_on = [
-#     aws_apigatewayv2_route.apigw_route
-#   ]
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_gateway_logs_api.arn
+    format = jsonencode({
+      authorizerError           = "$context.authorizer.error",
+      identitySourceIP          = "$context.identity.sourceIp",
+      integrationError          = "$context.integration.error",
+      integrationErrorMessage   = "$context.integration.errorMessage"
+      integrationLatency        = "$context.integration.latency",
+      integrationRequestId      = "$context.integration.requestId",
+      integrationStatus         = "$context.integration.integrationStatus",
+      integrationStatusCode     = "$context.integration.status",
+      requestErrorMessage       = "$context.error.message",
+      requestErrorMessageString = "$context.error.messageString",
+      requestId                 = "$context.requestId",
+      routeKey                  = "$context.routeKey",
+    })
+  }
+
+  depends_on = [
+    aws_apigatewayv2_route.apigw_route
+  ]
 
 
-#   # # Bug in terraform-aws-provider with perpetual diff
-#   # lifecycle {
-#   #   ignore_changes = [deployment_id]
-#   # }
-
-# }
+}
 
 
 
