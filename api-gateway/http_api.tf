@@ -40,19 +40,19 @@ resource "aws_apigatewayv2_api" "api" {
 resource "aws_apigatewayv2_integration" "apigw_integration" {
   count = var.api_type == "HTTP" ? 1 : 0
 
-  api_id             = aws_apigatewayv2_api.api[count.index].id
-  description        = format("%s Integration", var.integration_type)
+  api_id      = aws_apigatewayv2_api.api[count.index].id
+  description = format("%s Integration", var.integration_type)
 
-  integration_type   = var.integration_type
-  integration_uri    = var.integration_uri
-  integration_method = var.integration_method
+  integration_type       = var.integration_type
+  integration_uri        = var.integration_uri
+  integration_method     = var.integration_method
   payload_format_version = var.payload_format_version
 
   # Integration through VPC Link
   # connection_id      = aws_apigatewayv2_vpc_link.apigw_vpc_link.id
   # connection_type    = "VPC_LINK"
 
-  timeout_milliseconds   = var.timeout_milliseconds
+  timeout_milliseconds = var.timeout_milliseconds
 
   depends_on = [
     aws_apigatewayv2_api.api
@@ -66,7 +66,7 @@ resource "aws_apigatewayv2_route" "apigw_route" {
 
   count = var.api_type == "HTTP" ? 1 : 0
 
-  api_id             = aws_apigatewayv2_api.api[count.index].id
+  api_id = aws_apigatewayv2_api.api[count.index].id
 
   # api_key_required   = false
   # authorization_type = "NONE"
@@ -92,7 +92,7 @@ resource "random_uuid" "lambda" {
 resource "aws_lambda_permission" "apigw_lambda" {
 
   count = var.api_type == "HTTP" && var.integration_service == "LAMBDA" ? 1 : 0
-  
+
   statement_id  = random_uuid.lambda[count.index].result
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_function_name

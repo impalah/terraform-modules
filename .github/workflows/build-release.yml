@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: "Log level"
+        required: true
+        default: "warning"
+      tags:
+        description: "Manual release"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+      url: https://github.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: List files
+        id: listfiles
+        run: |
+          ls -la ${{ github.workspace }}
+
+      - name: Read VERSION.txt and set ImageTag
+        id: version
+        run: |
+          VERSION=$(cat ${{ github.workspace }}/VERSION.txt)
+          echo "RELEASE_NUMBER=${VERSION}.${{ github.run_number }}" >> $GITHUB_ENV
+
+      - name: Set IMAGE output
+        env:
+          RELEASE_NUMBER: ${{ env.RELEASE_NUMBER }}
+        id: set_output
+        run: |
+          echo "${RELEASE_NUMBER}" > ${{ github.workspace }}/release_number.txt
+          echo "release_number=${RELEASE_NUMBER}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_NUMBER: ${{ env.RELEASE_NUMBER }}
+        with:
+          tag_name: ${{ env.RELEASE_NUMBER }}
+          release_name: ${{ env.RELEASE_NUMBER }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        id: upload_release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ github.workspace }}/release_number.txt
+          asset_name: release_number.txt
+          asset_content_type: text/plain
+
+      - name: Archive build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release_number.txt
+          path: ${{ github.workspace }}/release_number.txt
+          if-no-files-found: error
+
+    outputs:
+      image: ${{ steps.set_output.outputs.image }}

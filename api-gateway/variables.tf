@@ -1,7 +1,7 @@
 variable "default_tags" {
   description = "A map of default tags to add to all resources"
   type        = map(string)
-  default     = {
+  default = {
     environment   = "production"
     deployment    = "terraform"
     cost-center   = "12345"
