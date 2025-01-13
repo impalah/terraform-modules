@@ -118,7 +118,13 @@ variable "lambda_function_name" {
 variable "stage_name" {
   description = "Name for the stage"
   type        = string
-  default     = null
+  default     = "$default"
+}
+
+variable "stage_autodeploy" {
+  description = "Automatically deploy changes to the stage"
+  type        = bool
+  default     = true
 }
 
 variable "integration_service" {
