@@ -6,11 +6,24 @@ variable "domain_name" {
 variable "description" {
   description = "Hosted zone description"
   type        = string
-  default = null
+  default     = null
+}
+
+variable "default_tags" {
+  description = "A map of default tags to add to all resources"
+  type        = map(string)
+  default = {
+    environment   = "production"
+    deployment    = "terraform"
+    cost-center   = "12345"
+    project       = "my-project"
+    owner         = "owner-name"
+    creation-date = ""
+  }
 }
 
 variable "tags" {
-  description = "A map of tags to add to all resources"
+  description = "External tags map"
   type        = map(string)
   default     = {}
 }

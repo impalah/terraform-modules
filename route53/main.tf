@@ -3,7 +3,7 @@
 ################################################################################
 
 resource "aws_route53_zone" "zone" {
-  name = var.domain_name
+  name    = var.domain_name
   comment = var.description
 
   # Private hosted zone only if VPC ID is provided
@@ -15,7 +15,11 @@ resource "aws_route53_zone" "zone" {
     }
   }
 
-  tags = var.tags
+  tags = merge(
+    { "Name" = var.domain_name },
+    var.tags,
+    var.default_tags,
+  )
 
 }
 
