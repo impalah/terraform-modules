@@ -1,6 +1,66 @@
 # ###################################################################################
-# Step by step App Runner
+# Private VPC Connector for App Runner
 # ###################################################################################
+
+# Security group for the service
+resource "aws_security_group" "app_runner_sg" {
+  name        = "${var.app_name}-sg"
+  description = "Security group for App Runner VPC Connector"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(
+    { "Name" = "${var.app_name}-sg" },
+    var.tags,
+    var.default_tags,
+  )
+
+}
+
+
+# Create private endpoint for App Runner
+resource "aws_vpc_endpoint" "private_vpc_endpoint" {
+
+  vpc_id            = var.vpc_id
+  service_name      = "com.amazonaws.${data.aws_region.current.name}.apprunner.requests"
+  vpc_endpoint_type = "Interface"
+
+  subnet_ids          = var.private_subnets
+  private_dns_enabled = false
+
+  # Custom Policy for Gateway or Interface Endpoints
+  # policy = each.value.policy
+
+  # Security groups for Interface Endpoints
+  security_group_ids = [aws_security_group.app_runner_sg.id]
+
+  tags = merge(
+    { Name = "${var.app_name}-ep" },
+    var.tags,
+    var.default_tags,
+  )
+}
+
 
 
 resource "aws_iam_role" "app_runner_access_role" {
@@ -73,40 +133,6 @@ resource "aws_iam_role_policy" "app_runner_instance_policy" {
 
 
 
-resource "aws_security_group" "app_runner_sg" {
-  name        = "${var.app_name}-sg"
-  description = "Security group for App Runner VPC Connector"
-  vpc_id      = var.vpc_id
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = merge(
-    { "Name" = "${var.app_name}-sg" },
-    var.tags,
-    var.default_tags,
-  )
-
-
-}
 
 resource "aws_apprunner_vpc_connector" "app_vpc_connector" {
   vpc_connector_name = "${var.app_name}-vpc-connector"
@@ -175,5 +201,28 @@ resource "aws_apprunner_service" "app_service" {
     var.tags,
     var.default_tags,
   )
+}
+
+
+# Create VPC Ingress Connection
+resource "aws_apprunner_vpc_ingress_connection" "private_vpc_connection" {
+  name        = "${var.app_name}-privatevpc-connection"
+  service_arn = aws_apprunner_service.app_service.arn
+
+  ingress_vpc_configuration {
+    vpc_id          = var.vpc_id
+    vpc_endpoint_id = aws_vpc_endpoint.private_vpc_endpoint.id
+  }
+
+  tags = merge(
+    { "Name" = "${var.app_name}-privatevpc-connection" },
+    var.tags,
+    var.default_tags,
+  )
+}
+
+output "domain_name" {
+  description = "Domain name of the App Runner service"
+  value       = aws_apprunner_vpc_ingress_connection.private_vpc_connection.domain_name
 }
 
