@@ -10,12 +10,6 @@ variable "environment" {
   description = "Environment (e.g. `prod`, `dev`, `staging`)."
 }
 
-variable "tags" {
-  type        = map(any)
-  default     = {}
-  description = "Additional tags (e.g. map(`BusinessUnit`,`XYZ`)."
-}
-
 variable "domain_name" {
   type        = string
   default     = null
@@ -50,5 +44,24 @@ variable "certificate_chain" {
   type        = string
   default     = null
   description = "Certificate chain."
+}
+
+variable "tags" {
+  description = "A map of tags to add to all resources"
+  type        = map(string)
+  default     = {}
+}
+
+variable "default_tags" {
+  description = "A map of default tags to add to all resources"
+  type        = map(string)
+  default = {
+    environment   = "production"
+    deployment    = "terraform"
+    cost-center   = "12345"
+    project       = "my-project"
+    owner         = "owner-name"
+    creation-date = ""
+  }
 }
 
