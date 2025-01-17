@@ -4,10 +4,10 @@ resource "aws_acm_certificate" "cert" {
   validation_method         = "DNS"
   subject_alternative_names = var.subject_alternative_names
 
-  tags = merge(
-    var.tags,
-    var.default_tags,
-  )
+  # tags = merge(
+  #   var.tags,
+  #   var.default_tags,
+  # )
 
   lifecycle {
     create_before_destroy = true
@@ -43,10 +43,10 @@ resource "aws_acm_certificate" "import_cert" {
   certificate_body  = var.certificate_body
   certificate_chain = var.certificate_chain
 
-  tags = merge(
-    var.tags,
-    var.default_tags,
-  )
+  # tags = merge(
+  #   var.tags,
+  #   var.default_tags,
+  # )
 
   lifecycle {
     create_before_destroy = true
