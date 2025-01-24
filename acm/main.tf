@@ -14,8 +14,17 @@ resource "aws_acm_certificate" "cert" {
   }
 }
 
-resource "aws_route53_record" "cert_validation" {
+
+data "aws_route53_record" "existing_record" {
   count = var.domain_name != null ? 1 : 0
+
+  zone_id = var.zone_id
+  name    = element(tolist(aws_acm_certificate.cert[0].domain_validation_options), 0).resource_record_name
+  type    = element(tolist(aws_acm_certificate.cert[0].domain_validation_options), 0).resource_record_type
+}
+
+resource "aws_route53_record" "cert_validation" {
+  count = var.domain_name != null && data.aws_route53_record.existing_record[0].id == "" ? 1 : 0
 
   # Include only the first item in the domain_validation_options list
   zone_id = var.zone_id
