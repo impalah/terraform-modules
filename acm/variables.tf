@@ -65,3 +65,8 @@ variable "default_tags" {
   }
 }
 
+variable "aws_profile" {
+  description = "The AWS profile to use for CLI commands"
+  type        = string
+  default     = "default"
+}
