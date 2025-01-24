@@ -4,29 +4,28 @@ resource "aws_acm_certificate" "cert" {
   validation_method         = "DNS"
   subject_alternative_names = var.subject_alternative_names
 
-  # tags = merge(
-  #   var.tags,
-  #   var.default_tags,
-  # )
-
   lifecycle {
     create_before_destroy = true
   }
 }
 
-
-data "aws_route53_record" "existing_record" {
+resource "null_resource" "check_existing_record" {
   count = var.domain_name != null ? 1 : 0
 
-  zone_id = var.zone_id
-  name    = element(tolist(aws_acm_certificate.cert[0].domain_validation_options), 0).resource_record_name
-  type    = element(tolist(aws_acm_certificate.cert[0].domain_validation_options), 0).resource_record_type
+  provisioner "local-exec" {
+    command = <<EOT
+      aws route53 list-resource-record-sets --profile ${var.aws_profile} --hosted-zone-id ${var.zone_id} --query "ResourceRecordSets[?Name == '${element(tolist(aws_acm_certificate.cert[0].domain_validation_options), 0).resource_record_name}.'].Name" --output text > existing_record.txt
+    EOT
+  }
+
+  triggers = {
+    always_run = "${timestamp()}"
+  }
 }
 
 resource "aws_route53_record" "cert_validation" {
-  count = var.domain_name != null && data.aws_route53_record.existing_record[0].id == "" ? 1 : 0
+  count = var.domain_name != null && fileexists("existing_record.txt") == false ? 1 : 0
 
-  # Include only the first item in the domain_validation_options list
   zone_id = var.zone_id
   name    = element(tolist(aws_acm_certificate.cert[0].domain_validation_options), 0).resource_record_name
   type    = element(tolist(aws_acm_certificate.cert[0].domain_validation_options), 0).resource_record_type
@@ -37,8 +36,9 @@ resource "aws_route53_record" "cert_validation" {
     create_before_destroy = true
     prevent_destroy       = true
   }
-}
 
+  depends_on = [null_resource.check_existing_record]
+}
 
 resource "aws_acm_certificate_validation" "cert_validation" {
   count                   = var.domain_name != null ? 1 : 0
@@ -52,13 +52,7 @@ resource "aws_acm_certificate" "import_cert" {
   certificate_body  = var.certificate_body
   certificate_chain = var.certificate_chain
 
-  # tags = merge(
-  #   var.tags,
-  #   var.default_tags,
-  # )
-
   lifecycle {
     create_before_destroy = true
   }
 }
-
