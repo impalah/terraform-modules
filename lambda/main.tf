@@ -4,7 +4,7 @@
 
 resource "aws_iam_role" "lambda_exec_role" {
   name               = format("%s-lambda_exec_role", var.function_name)
-  assume_role_policy = coalesce(var.assume_role_policy, file("${path.module}/policies/lambda-role-policy.json"))  
+  assume_role_policy = coalesce(var.assume_role_policy, file("${path.module}/policies/lambda-role-policy.json"))
 }
 
 resource "aws_iam_role_policy" "lambda_exec_role_policy" {
@@ -14,6 +14,9 @@ resource "aws_iam_role_policy" "lambda_exec_role_policy" {
 }
 
 resource "aws_security_group" "lambda_sg" {
+
+  count = var.vpc_id != null ? 1 : 0
+
   name        = format("%s-lambda_sg", var.function_name)
   description = "Security group for Lambda function"
   vpc_id      = var.vpc_id
@@ -73,14 +76,17 @@ resource "aws_lambda_function" "lambda_function" {
   }
 
   image_config {
-    command            = var.image_config.command
-    entry_point        = var.image_config.entry_point
-    working_directory  = var.image_config.working_directory
+    command           = var.image_config.command
+    entry_point       = var.image_config.entry_point
+    working_directory = var.image_config.working_directory
   }
 
-  vpc_config {
-    subnet_ids         = var.vpc_subnets_ids
-    security_group_ids = [aws_security_group.lambda_sg.id]
+  dynamic "vpc_config" {
+    for_each = var.vpc_id != null ? [var.vpc_id] : []
+    content {
+      subnet_ids         = var.vpc_subnets_ids
+      security_group_ids = [aws_security_group.lambda_sg[0].id]
+    }
   }
 
   tags = merge(
